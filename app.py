@@ -3,28 +3,24 @@ import json
 import hmac
 import hashlib
 from flask import Flask, request, abort
-from telegram import Bot
+from telegram import Bot, InlineKeyboardButton, InlineKeyboardMarkup, InputMediaPhoto
 import razorpay
 
 # ================== CONFIG ==================
-
 BOT_TOKEN = os.environ.get("8416145274:AAHQxyREWJYGsIqOOlSVKtEkeBS076iEcfI")
 RAZORPAY_KEY_ID = os.environ.get("rzp_test_SINKbNwzFjDr4w")
 RAZORPAY_KEY_SECRET = os.environ.get("gH4mUJpVWAUa690wvp2SLkUS")
 WEBHOOK_SECRET = os.environ.get("WE—>The@king#94")
 
 VIDEO_FILE_ID = "BAACAgUAAxkBAAMVaZi17-4vMKxg-Y2TO5sIjERe5TAAAr4YAAKz6slU5rq7yc7rx6s6BA"
+THUMBNAIL_FILE_ID = "AgACAgUAAxkBAAMaaZjIZyrwR2Z5asP3N8YeusNxrIAAAnwNaxuz6slUirkLaKyvubQBAAMCAAN5AAM6BA"
 PRICE = 3900  # 39 INR = 3900 paise
 
 bot = Bot(token=BOT_TOKEN)
-razorpay_client = razorpay.Client(
-    auth=(RAZORPAY_KEY_ID, RAZORPAY_KEY_SECRET)
-)
-
+razorpay_client = razorpay.Client(auth=(RAZORPAY_KEY_ID, RAZORPAY_KEY_SECRET))
 app = Flask(__name__)
 
 # ================== HELPERS ==================
-
 def load_data():
     with open("data.json", "r") as f:
         return json.load(f)
@@ -34,13 +30,25 @@ def save_data(data):
         json.dump(data, f)
 
 # ================== TELEGRAM START ==================
-
-@app.route("/")
-def home():
-    return "Bot is running"
+@app.route("/start/<int:user_id>", methods=["GET"])
+def start(user_id):
+    # Thumbnail + description
+    caption = "🎬 Here is the video you want!\n\nClick below to pay ₹39 and get full access."
+    
+    keyboard = [
+        [InlineKeyboardButton("Pay ₹39", callback_data="pay")]
+    ]
+    reply_markup = InlineKeyboardMarkup(keyboard)
+    
+    bot.send_photo(
+        chat_id=user_id,
+        photo=THUMBNAIL_FILE_ID,
+        caption=caption,
+        reply_markup=reply_markup
+    )
+    return "OK"
 
 # ================== CREATE ORDER ==================
-
 @app.route("/create-order", methods=["POST"])
 def create_order():
     data = request.json
@@ -62,7 +70,6 @@ def create_order():
     return {"order_id": order["id"]}
 
 # ================== RAZORPAY WEBHOOK ==================
-
 @app.route("/razorpay-webhook", methods=["POST"])
 def razorpay_webhook():
     payload = request.data
@@ -98,6 +105,5 @@ def razorpay_webhook():
     return "OK"
 
 # ================== RUN ==================
-
 if __name__ == "__main__":
     app.run(host="0.0.0.0", port=5000)
